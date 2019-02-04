@@ -1,80 +1,104 @@
 const express = require('express');
-const path = require('path');
 const redis = require('redis');
 const mysql = require('mysql');
-var sha1 = require('sha1');
+const crypto = require('crypto');
 const app = express();
 
 const port = 5000;
+let isDBConnected = false;
+let isRedisConnected = false;
 
 // create connection to database
-const db = mysql.createConnection({
+const dbConn = mysql.createConnection({
     host: 'localhost',
-    user: 'arun',
-    password: 'password',
+    user: 'geek',
+    password: process.env.QUERY_DB_PASS, //store your credentiels somewhere safe
     database: 'employees'
 });
 
 
 // connect to database
-db.connect((err) => {
+dbConn.connect((err) => {
     if (err) {
-        throw err;
+        console.error(err);
+    } else {
+        isDBConnected = true;
+        console.log('Connected to database');
     }
-    console.log('Connected to database');
 });
 
 // create and connect redis client to local instance.
-const client = redis.createClient();
-console.log('Connected to redis');
+const redisClient = redis.createClient({password: process.env.QUERY_REDIS_PASS}); //store your credentiels somewhere safe
 
 // Print redis errors to the console
-client.on('error', (err) => {
-    console.log("Error " + err);
+redisClient.on('error', (err) => {
+    isRedisConnected = false;
+    console.error(err);
+}).on('connection', () => {
+    isRedisConnected = true;
+    console.log('Connected to Redis');
 });
-client.flushall();
 
 //Query data
 function doQuery(req, res, next) {
-    console.log('Start Query');
+    if(!isDBConnected || !isRedisConnected) {
+        res.send("Server not connected");
+    }
+
     //query from MySQL
     let query = `select * from employees.employees e where last_name like '%${req.query.name}%'`;
-    let key = sha1(query);
-
-    client.exists(key, (err, isExist) => {
-        if (isExist) {
+    let key = crypto.createHash('sha1')
+        .update(query)
+        .digest('hex');
+    
+    // check if the     
+    redisClient.exists(key, (err, isExist) => {
+        if (isExist === 1) {
             console.log('Feeling lucky, key found in Redis');
 
             //mesure time against Redis
             console.time('CacheQuery');
-            client.get(key, function (err, reply) {
-                res.send(reply);
+            redisClient.get(key, function (err, reply) {
+                //end mesure time of query against MySQL
+                console.timeEnd('CacheQuery');
+
+                if(err) {
+                    next(err);
+                } else {
+                    res.send(reply);
+                }
             });
-            //end mesure time of query against MySQL
-            console.timeEnd('CacheQuery');
-            return;
-        }
-        else {
+        } else if (err) {
+            next(err);
+        } else {
             console.log('No luck, get the data from DB');
             //mesure time against MySQL
             console.time('DBQuery');
-            db.query(query, (err, result) => {
-                if (err) {
-                    res.redirect('/');
-                }
-                let data = JSON.stringify(result);
-                res.send(data);
+            dbConn.query(query, (err, result) => {
                 //end mesure time of query against MySQL
                 console.timeEnd('DBQuery');
-                client.set(key, data, redis.print);
+                if (err) {
+                    next(err);
+                } else {
+                    const data = JSON.stringify(result);
+                    redisClient.set(key, data, function (err, reply) {
+                        if(err) {
+                            next(err);
+                        } else {
+                            redis.print
+                        }
+                    });    
+
+                    res.send(data);
+                }
             });
         }
     });
 };
 
-// configure middleware
 app.set('port', process.env.port || port); // set express to use this port
 
+// configure middleware
 app.use(function (req, res, next) {
     res.header("Access-Control-Allow-Origin", "*");
     res.header("Access-Control-Allow-Headers", "Origin, X-Requested-With, Content-Type, Accept");
