@@ -12,7 +12,7 @@ let isRedisConnected = false;
 const dbConn = mysql.createConnection({
     host: 'localhost',
     user: 'geek',
-    password: process.env.QUERY_DB_PASS, //store your credentiels somewhere safe
+    password: process.env.QUERY_DB_PASS, //store your credentials somewhere safe
     database: 'employees'
 });
 
@@ -28,7 +28,7 @@ dbConn.connect((err) => {
 });
 
 // create and connect redis client to local instance.
-const redisClient = redis.createClient({password: process.env.QUERY_REDIS_PASS}); //store your credentiels somewhere safe
+const redisClient = redis.createClient({password: process.env.QUERY_REDIS_PASS}); //store your credentials somewhere safe
 
 // Print redis errors to the console
 redisClient.on('error', (err) => {
@@ -56,10 +56,10 @@ function doQuery(req, res, next) {
         if (isExist === 1) {
             console.log('Feeling lucky, key found in Redis');
 
-            //mesure time against Redis
+            //measure time against Redis
             console.time('CacheQuery');
             redisClient.get(key, function (err, reply) {
-                //end mesure time of query against MySQL
+                //end measure time of query against MySQL
                 console.timeEnd('CacheQuery');
 
                 if(err) {
@@ -72,10 +72,10 @@ function doQuery(req, res, next) {
             next(err);
         } else {
             console.log('No luck, get the data from DB');
-            //mesure time against MySQL
+            //measure time against MySQL
             console.time('DBQuery');
             dbConn.query(query, (err, result) => {
-                //end mesure time of query against MySQL
+                //end measure time of query against MySQL
                 console.timeEnd('DBQuery');
                 if (err) {
                     next(err);
