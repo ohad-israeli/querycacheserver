@@ -34,7 +34,7 @@ const redisClient = redis.createClient({password: process.env.QUERY_REDIS_PASS})
 redisClient.on('error', (err) => {
     isRedisConnected = false;
     console.error(err);
-}).on('connection', () => {
+}).on('connect', () => {
     isRedisConnected = true;
     console.log('Connected to Redis');
 });
