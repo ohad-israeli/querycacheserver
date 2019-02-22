@@ -1,8 +1,9 @@
-const express = require('express');
-const redis = require('redis');
-const mysql = require('mysql');
-const crypto = require('crypto');
-const app = express();
+const 
+    express = require('express'),
+    redis = require('redis'),
+    mysql = require('mysql'),
+    crypto = require('crypto'),
+    app = express();
 
 const port = 5000;
 let isDBConnected = false;
