@@ -8,4 +8,4 @@ to run just
 
 node server.js
 
-You can read more about this code in my blog
+You can read more about this code in my blog https://ohad-israeli.github.io/run-redis-run/#
